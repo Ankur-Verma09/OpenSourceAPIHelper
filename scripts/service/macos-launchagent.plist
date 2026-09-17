@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  OpenSourceAPIHelper — macOS background service (Req 10 / NFR-5).
+  Install:
+    sed "s|__ROOT__|/absolute/path/to/OpenSourceAPIHelper|g" this-file \
+      > ~/Library/LaunchAgents/com.osahhelper.daemon.plist
+    launchctl load ~/Library/LaunchAgents/com.osahhelper.daemon.plist
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.osahhelper.daemon.plist
+  Binds to 127.0.0.1 only. Secrets stay in the data dir vault, not here.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.osahhelper.daemon</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/node</string>
+    <string>__ROOT__/server/src/index.js</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>OSAH_DATA_DIR</key>
+    <string>__ROOT__/data</string>
+    <key>OSAH_PORT</key>
+    <string>8787</string>
+    <key>OSAH_HOST</key>
+    <string>127.0.0.1</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>__ROOT__/data/osah.log</string>
+  <key>StandardErrorPath</key>
+  <string>__ROOT__/data/osah.error.log</string>
+</dict>
+</plist>

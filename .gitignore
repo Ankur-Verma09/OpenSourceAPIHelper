@@ -1,0 +1,9 @@
+node_modules/
+client/dist/
+client/node_modules/
+server/node_modules/
+data/
+.runtime/
+*.log
+**/.masterkey
+.env

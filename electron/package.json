@@ -1,0 +1,13 @@
+{
+  "name": "opensourceapihelper-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Desktop shell for OpenSourceAPIHelper — spawns the loopback service and loads the built React client.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^31.7.2"
+  }
+}

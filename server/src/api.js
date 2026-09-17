@@ -6,7 +6,7 @@ const prov = require('./providers');
 const chat = require('./chatstore');
 const openai = require('./openai');
 const db = require('./db');
-const { redact } = require('./util');
+const { redact, audit } = require('./util');
 
 const router = express.Router();
 
@@ -55,9 +55,20 @@ router.post('/providers/:id/test', async (req, res) => {
   }
 });
 
-// ---------------- models ----------------
-router.get('/models', (req, res) => {
-  res.json(prov.listModels(req.query.provider || null));
+// Rotate provider API key (increments version, audits)
+router.post('/providers/:id/rotate-key', (req, res) => {
+  const { apiKey } = req.body || {};
+  if (!apiKey || !String(apiKey).trim()) {
+    return res.status(400).json({ error: 'apiKey is required' });
+  }
+  const p = prov.rotateKey(req.params.id, String(apiKey).trim());
+  if (!p) return res.status(404).json({ error: 'provider not found' });
+  res.json({ ok: true, provider: p });
+});
+
+router.delete('/providers/:id', (req, res) => {
+  prov.remove(req.params.id);
+  res.status(204).end();
 });
 
 router.post('/models/activate', (req, res) => {
@@ -66,14 +77,23 @@ router.post('/models/activate', (req, res) => {
   const row = model ? db.one('SELECT provider_id FROM models WHERE model = ?', model) : null;
   const id = row ? row.provider_id : null;
   prov.setActive(id);
+  audit('model_activate', { model, provider_id: id });
   res.json({ ok: true, active_provider: id });
+});
+
+// models list (client expects GET /api/models)
+router.get('/models', (req, res) => {
+  const rows = db.all('SELECT * FROM models ORDER BY model');
+  res.json(rows.map(r => ({ id: r.model, name: r.model, provider_id: r.provider_id })));
 });
 
 // ---------------- chats ----------------
 router.get('/chats', (req, res) => res.json(chat.listChats()));
 
 router.post('/chats', (req, res) => {
-  res.status(201).json(chat.createChat(req.body || {}));
+  const created = chat.createChat(req.body || {});
+  audit('chat_create', { chat_id: created.id, title: created.title, model: created.model });
+  res.status(201).json(created);
 });
 
 router.get('/chats/:id', (req, res) => {
@@ -84,13 +104,20 @@ router.get('/chats/:id', (req, res) => {
 
 router.patch('/chats/:id', (req, res) => {
   const b = req.body || {};
-  if (b.title !== undefined) chat.renameChat(req.params.id, b.title);
-  if (b.model !== undefined) chat.setChatModel(req.params.id, b.model);
+  if (b.title !== undefined) {
+    chat.renameChat(req.params.id, b.title);
+    audit('chat_rename', { chat_id: req.params.id, title: b.title });
+  }
+  if (b.model !== undefined) {
+    chat.setChatModel(req.params.id, b.model);
+    audit('chat_model_change', { chat_id: req.params.id, model: b.model });
+  }
   res.json({ ok: true });
 });
 
 router.delete('/chats/:id', (req, res) => {
   chat.deleteChat(req.params.id);
+  audit('chat_delete', { chat_id: req.params.id });
   res.status(204).end();
 });
 
@@ -152,6 +179,13 @@ router.post('/chats/:id/stream', async (req, res) => {
 
     let acc = '';
     let chunk = '';
+    const MAX_ACC = 500000; // 500KB max accumulated response
+
+    // Abort upstream if client disconnects
+    req.on('close', () => {
+      try { upstream.body?.cancel?.(); } catch { /* ignore */ }
+    });
+
     for await (const buf of upstream.body) {
       // NOTE: web ReadableStream yields Uint8Array (NOT Buffer), so
       // Buffer.isBuffer() is false and String(u8) would comma-join bytes.
@@ -168,7 +202,15 @@ router.post('/chats/:id/stream', async (req, res) => {
           const delta = json.choices?.[0]?.delta?.content || '';
           const reasoning = json.choices?.[0]?.delta?.reasoning_content || '';
           if (reasoning) send({ event: 'reasoning', text: reasoning });
-          if (delta) { acc += delta; send({ event: 'delta', text: delta }); }
+          if (delta) {
+            acc += delta;
+            if (acc.length > MAX_ACC) {
+              send({ event: 'error', error: 'response too large — truncated' });
+              res.end();
+              return;
+            }
+            send({ event: 'delta', text: delta });
+          }
           if (json.choices?.[0]?.finish_reason) send({ event: 'finish' });
         } catch { /* non-JSON SSE frame */ }
       }
@@ -208,6 +250,7 @@ router.put('/settings', (req, res) => {
     const merged = Object.assign({}, DEFAULT_SETTINGS, req.body || {});
     const sealed = cryptoMod.encrypt(JSON.stringify(merged));
     db.run("INSERT INTO meta(key,value) VALUES('settings',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", sealed);
+    audit('settings_change', { settings: merged });
     res.json(merged);
   } catch (e) {
     res.status(500).json({ error: (e && e.message) || 'save failed' });

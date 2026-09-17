@@ -4,6 +4,38 @@
 
 // Normalize a user-provided base URL to the OpenAI-compatible `.../v1` form.
 // Fixes the classic mistakes: trailing "/chat/completions", missing "/v1".
+// Blocks private/reserved IP ranges to prevent SSRF.
+const BLOCKED_HOSTNAMES = new Set([
+  'localhost',
+  'localhost.localdomain',
+]);
+
+const BLOCKED_IP_PATTERNS = [
+  /^127\./,           // loopback
+  /^10\./,            // RFC1918 10/8
+  /^192\.168\./,      // RFC1918 192.168/16
+  /^172\.(1[6-9]|2\d|3[0-1])\./, // RFC1918 172.16/12
+  /^169\.254\./,      // link-local
+  /^::1$/,            // IPv6 loopback
+  /^fe80::/,          // IPv6 link-local
+  /^::ffff:127\./,    // IPv4-mapped loopback
+  /^::ffff:10\./,     // IPv4-mapped RFC1918
+  /^::ffff:192\.168\./,
+  /^::ffff:172\.(1[6-9]|2\d|3[0-1])\./,
+  /^::ffff:169\.254\./,
+];
+
+function isAllowedHost(hostname) {
+  if (!hostname) return false;
+  const lower = hostname.toLowerCase();
+  if (BLOCKED_HOSTNAMES.has(lower)) return false;
+  // IP address check
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(lower) || /^\[?[\da-f:]+\]?$/i.test(lower)) {
+    return !BLOCKED_IP_PATTERNS.some((re) => re.test(lower.replace(/^\[|\]$/g, '')));
+  }
+  return true; // allow hostnames (DNS) - user controls DNS resolution
+}
+
 function normalizeBase(raw) {
   if (!raw) throw new Error('base URL is required');
   let u = String(raw).trim().replace(/\/+$/, '');
@@ -13,6 +45,11 @@ function normalizeBase(raw) {
   // also trim /models if someone pasted the full endpoint
   u = u.replace(/\/models$/i, '');
   if (!/\/v1\/?$/i.test(u)) u += '/v1';
+  // SSRF guard: validate hostname before returning
+  const hostname = new URL(u).hostname;
+  if (!isAllowedHost(hostname)) {
+    throw new Error(`blocked host: ${hostname} (private/reserved addresses not allowed)`);
+  }
   return u;
 }
 
@@ -78,12 +115,21 @@ async function testConnection(baseUrl, apiKey, model, { timeout = 20000 } = {}) 
 // Stream a chat-completion SSE response. Caller governs timeout/cancellation
 // (streaming responses can legitimately run for minutes). Returns `res`.
 async function streamChat(baseUrl, apiKey, { model, messages, max_tokens }) {
-  const res = await fetch(`${normalizeBase(baseUrl)}/chat/completions`, {
-    method: 'POST',
-    headers: headers({ key: apiKey }),
-    body: JSON.stringify({ model, messages, max_tokens, stream: true }),
-  });
-  return res;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 min max stream duration
+  try {
+    const res = await fetch(`${normalizeBase(baseUrl)}/chat/completions`, {
+      method: 'POST',
+      headers: headers({ key: apiKey }),
+      body: JSON.stringify({ model, messages, max_tokens, stream: true }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    return res;
+  } catch (e) {
+    clearTimeout(timeout);
+    throw e;
+  }
 }
 
 module.exports = { normalizeBase, discoverModels, testConnection, streamChat };

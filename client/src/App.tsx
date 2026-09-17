@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { api } from './api/client';
 import { useStore } from './store';
 import { Dashboard } from './pages/Dashboard';
 import { Chat } from './pages/Chat';
@@ -73,7 +74,6 @@ function ChatList({ onOpen, activeTab }: { onOpen: () => void; activeTab: Tab })
   const [busy, setBusy] = useState(false);
 
   const newChat = async () => {
-    const { api } = await import('./api/client');
     setBusy(true);
     try {
       const c = await api.createChat({});
@@ -89,7 +89,6 @@ function ChatList({ onOpen, activeTab }: { onOpen: () => void; activeTab: Tab })
   const del = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (!confirm('Delete this chat and its history?')) return;
-    const { api } = await import('./api/client');
     await api.deleteChat(id);
     if (active === id) setActive(null);
     await refresh();

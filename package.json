@@ -12,7 +12,8 @@
     "build": "npm run build -w client",
     "start": "node server/src/index.js",
     "service:install": "node scripts/service/windows-service.js install",
-    "service:uninstall": "node scripts/service/windows-service.js uninstall"
+    "service:uninstall": "node scripts/service/windows-service.js uninstall",
+    "audit": "npm audit --audit-level=high && npm audit --audit-level=high -w server && npm audit --audit-level=high -w client"
   },
   "devDependencies": {
     "concurrently": "^9.0.1"

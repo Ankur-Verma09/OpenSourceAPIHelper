@@ -75,8 +75,29 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false,
       preload: path.join(__dirname, 'preload.js'),
     },
+  });
+
+  // Content Security Policy — restrict to local service + self
+  win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    const csp = [
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data:",
+      "font-src 'self'",
+      "connect-src 'self' http://127.0.0.1:8787 ws://127.0.0.1:8787",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; ');
+    const headers = { ...details.responseHeaders };
+    headers['Content-Security-Policy'] = [csp];
+    callback({ responseHeaders: headers });
   });
 
   // Open external links in the OS browser, never a new Electron window.

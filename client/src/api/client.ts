@@ -34,10 +34,16 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const method = (init.method || 'GET').toUpperCase();
+  const needsCsrf = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
-      headers: { 'Content-Type': 'application/json', ...(init.headers as Record<string, string>) },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(needsCsrf ? { 'X-OSAH-CSRF': '1' } : {}),
+        ...(init.headers as Record<string, string>),
+      },
       ...init,
     });
   } catch (e) {
@@ -78,6 +84,11 @@ export const api = {
   deleteProvider: (id: string) => request<void>(`/api/providers/${id}`, { method: 'DELETE' }),
   testProvider: (id: string) =>
     request<ProviderTestResult>(`/api/providers/${id}/test`, { method: 'POST' }),
+  rotateProviderKey: (id: string, apiKey: string) =>
+    request<{ ok: boolean; provider: Provider }>(`/api/providers/${id}/rotate-key`, {
+      method: 'POST',
+      body: JSON.stringify({ apiKey }),
+    }),
 
   // models
   listModels: () => request<DiscoveredModel[]>('/api/models'),

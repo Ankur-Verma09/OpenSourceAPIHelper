@@ -4,8 +4,8 @@
 
 const { contextBridge } = require('electron');
 
-contextBridge.exposeInMainWorld('osah', {
+contextBridge.exposeInMainWorld('osah', Object.freeze({
   // mirror the service default (127.0.0.1:8787) or overrides
   servicePort: () => Number(process.env.OSAH_PORT || 8787),
   serviceHost: () => process.env.OSAH_HOST || '127.0.0.1',
-});
+}));

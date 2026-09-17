@@ -40,6 +40,8 @@ function getMasterKey() {
     if (buf.length !== 32) {
       throw new Error('master key file corrupt (expected 32 bytes hex)');
     }
+    // Enforce restrictive permissions on every read (defense in depth)
+    try { fs.chmodSync(file, 0o600); } catch { /* best effort */ }
     return buf;
   }
   const key = crypto.randomBytes(32);
@@ -49,6 +51,7 @@ function getMasterKey() {
     if (e.code !== 'EEXIST') throw e;
     // Lost a race; the other writer's key is already in place — use it.
     const raw = fs.readFileSync(file, 'utf8').trim();
+    try { fs.chmodSync(file, 0o600); } catch { /* best effort */ }
     return Buffer.from(raw, 'hex');
   }
   return key;

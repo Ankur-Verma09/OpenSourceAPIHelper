@@ -8,7 +8,8 @@ function maskKey(value) {
   if (!value) return '';
   const s = String(value).trim();
   if (s.length <= 8) return '••••••';
-  const lead = s.slice(0, s.indexOf('-') > 0 ? s.indexOf('-') + 1 : 3);
+  // Consistent masking: first 4 + dots + last 4, regardless of key format
+  const lead = s.slice(0, 4);
   const tail = s.slice(-4);
   return `${lead}••••••${tail}`;
 }
@@ -52,3 +53,27 @@ function redactHeaders(headers) {
 }
 
 module.exports = { maskKey, redact, redactHeaders, looksLikeSecret };
+
+// Audit logger — JSONL to config.AUDIT_LOG
+const fs = require('fs');
+const path = require('path');
+const config = require('./config');
+
+function ensureAuditDir() {
+  const dir = path.dirname(config.AUDIT_LOG);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+}
+
+function audit(event, details = {}) {
+  try {
+    ensureAuditDir();
+    const entry = {
+      ts: Date.now(),
+      event,
+      ...details,
+    };
+    fs.appendFileSync(config.AUDIT_LOG, JSON.stringify(entry) + '\n', { encoding: 'utf8', mode: 0o600 });
+  } catch { /* best effort — never block on audit */ }
+}
+
+module.exports = { maskKey, redact, redactHeaders, looksLikeSecret, audit };

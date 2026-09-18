@@ -150,4 +150,4 @@ All FR/NFR IDs trace across the set: feature → component → interface → ADR
 
 ## Status
 
-Docs v2 (design) **and** a working implementation both exist. The server (Express + `node:sqlite` + AES‑GCM vault + `/v1` proxy), React client, and Electron wrapper are built and verified against a live provider stream. See [`USAGE.md`](USAGE.md) for install / run / OS‑service steps, or [`docs/05-phases.md`](docs/05-phases.md) for what remains (Phase 4 packaging / installers).
+Docs v2 (design) **and** a working implementation both exist. The server (Express + `node:sqlite` + AES‑GCM vault + `/v1` proxy), React client, and Electron wrapper are built and verified against a live provider stream. See [`USAGE.md`](USAGE.md) for install / run / OS‑service steps, or [`docs/05-phases.md`](docs/05-phases.md) for what remains (Phase 4 packaging / installers)."# OpenSourceAPIHelper" 

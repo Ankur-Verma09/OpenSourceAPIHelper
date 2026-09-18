@@ -43,7 +43,9 @@
       {
         "from": "server",
         "to": "server",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
@@ -54,5 +56,8 @@
       "perMachine": true,
       "allowToChangeInstallationDirectory": true
     }
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3"
   }
 }

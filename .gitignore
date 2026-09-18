@@ -4,6 +4,12 @@ client/node_modules/
 server/node_modules/
 data/
 .runtime/
+.runtime_test/
+dist/
 *.log
 **/.masterkey
 .env
+*.exe
+*.blockmap
+builder-debug.yml
+logic.md

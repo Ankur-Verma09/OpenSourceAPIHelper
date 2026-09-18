@@ -8,6 +8,7 @@ const openai = require('./openai');
 const { createVerifyingFetch } = require('./openai');
 const db = require('./db');
 const { redact, audit } = require('./util');
+const license = require('./license');
 const {
   asyncHandler,
   validateInput,
@@ -329,7 +330,89 @@ router.get('/status', asyncHandler(async (req, res) => {
   }
 }));
 
-// Central error guard: never leak keys or internal detail to the client.
+// ---------------- licensing ----------------
+
+// Get current machine fingerprint (for display/debug)
+router.get('/license/machine', asyncHandler(async (req, res) => {
+  const machine = license.getOrCreateMachine();
+  res.json({
+    machine_id: machine.machine_id,
+    mac_addresses: machine.mac_addresses,
+    hardware_hash: machine.hardware_hash,
+    platform: machine.platform,
+    arch: machine.arch,
+  });
+}));
+
+// Validate license for email (and bind if needed)
+router.post('/license/validate', asyncHandler(async (req, res) => {
+  const { email } = req.body || {};
+  if (!email || !String(email).trim()) {
+    throw validationFailed('Email is required', 'email');
+  }
+  const result = license.validateAndBind(String(email).trim().toLowerCase());
+  if (!result.success) {
+    return res.status(403).json({ ok: false, reason: result.reason, message: result.message });
+  }
+  res.json({ ok: true, license: result.license, machine: result.machine, newlyBound: result.newlyBound });
+}));
+
+// Check license status (read-only)
+router.get('/license/status', asyncHandler(async (req, res) => {
+  const { email } = req.query;
+  if (!email) {
+    throw validationFailed('Email query parameter required', 'email');
+  }
+  const machine = license.getOrCreateMachine();
+  const result = license.validateLicense(email.toLowerCase(), machine);
+  if (!result.valid) {
+    return res.json({ ok: false, reason: result.reason, message: result.message });
+  }
+  res.json({ ok: true, license: result.license });
+}));
+
+// Admin: whitelist management (requires admin token)
+router.get('/license/whitelist', asyncHandler(async (req, res) => {
+  res.json(license.listWhitelist());
+}));
+
+router.post('/license/whitelist', asyncHandler(async (req, res) => {
+  const { email, name } = req.body || {};
+  if (!email || !String(email).trim()) {
+    throw validationFailed('Email is required', 'email');
+  }
+  const entry = license.addToWhitelist(String(email).trim().toLowerCase(), name || '', 'api');
+  res.status(201).json(entry);
+}));
+
+router.delete('/license/whitelist', asyncHandler(async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) {
+    throw validationFailed('Email is required', 'email');
+  }
+  license.removeFromWhitelist(String(email).trim().toLowerCase());
+  res.status(204).end();
+}));
+
+// Admin: revoke license
+router.post('/license/revoke', asyncHandler(async (req, res) => {
+  const { email, machineId } = req.body || {};
+  if (!email) {
+    throw validationFailed('Email is required', 'email');
+  }
+  license.revokeLicense(email.toLowerCase(), machineId || null);
+  res.json({ ok: true });
+}));
+
+// Admin: get license status for any email
+router.get('/license/admin/status', asyncHandler(async (req, res) => {
+  const { email } = req.query;
+  if (!email) {
+    throw validationFailed('Email query parameter required', 'email');
+  }
+  const status = license.getLicenseStatus(email.toLowerCase());
+  res.json(status);
+}));
 // (asyncHandler catches most, but this handles sync errors in middleware)
 router.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {

@@ -95,3 +95,31 @@ export type StreamEvent =
   | { event: 'finish' }
   | { event: 'done'; message_id: string | null; full: string }
   | { event: 'error'; error: string };
+
+/** License validation response from POST /api/license/validate or GET /api/license/status */
+export interface LicenseValidationResult {
+  ok: boolean;
+  reason?: string;
+  message?: string;
+  license?: {
+    id: string;
+    email: string;
+    machine_id: string;
+    machine_hash: string;
+    status: string;
+    bound_at: number;
+    last_validated: number;
+    expires_at?: number;
+  };
+  machine?: MachineInfo;
+  newlyBound?: boolean;
+}
+
+/** Machine fingerprint info from GET /api/license/machine */
+export interface MachineInfo {
+  machine_id: string;
+  mac_addresses: string[];
+  hardware_hash: string;
+  platform: string;
+  arch: string;
+}

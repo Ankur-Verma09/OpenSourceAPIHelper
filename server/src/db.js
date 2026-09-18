@@ -88,6 +88,40 @@ function migrate() {
     CREATE TRIGGER IF NOT EXISTS messages_au AFTER UPDATE ON messages BEGIN
       UPDATE messages_fts SET content = new.content WHERE msg_id = old.id;
     END;
+
+    -- Licensing tables
+    CREATE TABLE IF NOT EXISTS email_whitelist (
+      id          TEXT PRIMARY KEY,
+      email       TEXT NOT NULL UNIQUE,
+      name        TEXT,
+      added_by    TEXT,
+      created_at  INTEGER NOT NULL,
+      active      INTEGER NOT NULL DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS machines (
+      id              TEXT PRIMARY KEY,
+      machine_id      TEXT NOT NULL,      -- OS machine ID (e.g., wmic csproduct get UUID)
+      mac_addresses   TEXT NOT NULL,      -- JSON array of MAC addresses
+      hardware_hash   TEXT NOT NULL,      -- SHA256 of combined hardware identifiers
+      platform        TEXT NOT NULL,      -- win32, darwin, linux
+      arch            TEXT NOT NULL,
+      first_seen      INTEGER NOT NULL,
+      last_seen       INTEGER NOT NULL,
+      UNIQUE(machine_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS licenses (
+      id              TEXT PRIMARY KEY,
+      email           TEXT NOT NULL,
+      machine_id      TEXT NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+      machine_hash    TEXT NOT NULL,      -- Hardware hash at time of binding
+      status          TEXT NOT NULL DEFAULT 'active', -- active, revoked, expired
+      bound_at        INTEGER NOT NULL,
+      last_validated  INTEGER,
+      expires_at      INTEGER,            -- Optional expiration
+      UNIQUE(email, machine_id)
+    );
   `);
 
   ensureColumn('providers', 'key_sealed', "TEXT NOT NULL DEFAULT ''");

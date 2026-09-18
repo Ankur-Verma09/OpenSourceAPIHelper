@@ -18,14 +18,32 @@ const TABS: { id: Tab; label: string }[] = [
 export default function App() {
   const [tab, setTab] = useState<Tab>('chat');
   const refresh = useStore((s) => s.refresh);
+  const setMachine = useStore((s) => s.setMachine);
   const online = useStore((s) => s.online);
   const loading = useStore((s) => s.loading);
+  const machine = useStore((s) => s.machine);
+  const licensedEmail = useStore((s) => s.licensedEmail);
+
+  // Fetch license status and machine info on mount
+  useEffect(() => {
+    const loadLicense = async () => {
+      try {
+        const machineInfo = await api.license.machine();
+        setMachine(machineInfo);
+      } catch {
+        // Ignore - license check happens in Electron main
+      }
+    };
+    loadLicense();
+  }, [setMachine]);
 
   useEffect(() => {
     refresh();
     const t = setInterval(() => refresh(), 8000);
     return () => clearInterval(t);
   }, [refresh]);
+
+  const savedEmail = licensedEmail;
 
   return (
     <div className="app">
@@ -55,6 +73,7 @@ export default function App() {
       <main className="layout">
         <div className="sidebar glass">
           <ChatList onOpen={() => setTab('chat')} activeTab={tab} />
+          <LicenseInfo machine={machine} email={savedEmail} />
         </div>
         <section className="pane glass">
           {tab === 'chat' && <Chat />}
@@ -63,6 +82,26 @@ export default function App() {
           {tab === 'dashboard' && <Dashboard />}
         </section>
       </main>
+    </div>
+  );
+}
+
+function LicenseInfo({ machine, email }: { machine: any; email: string | null }) {
+  if (!machine) return null;
+
+  return (
+    <div className="license-info glass" style={{ marginTop: 'auto', padding: 16 }}>
+      <div className="row" style={{ marginBottom: 8 }}>
+        <strong style={{ fontSize: 12 }}>Licensed to:</strong>
+        <div className="spacer" />
+        <span className="badge purple">{email || 'Unknown'}</span>
+      </div>
+      <details className="machine-details">
+        <summary>Machine ID</summary>
+        <pre style={{ fontSize: 10, maxHeight: 120, overflow: 'auto' }}>
+          {JSON.stringify({ id: machine.machine_id, platform: machine.platform, arch: machine.arch }, null, 2)}
+        </pre>
+      </details>
     </div>
   );
 }

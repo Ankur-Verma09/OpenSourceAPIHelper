@@ -11,6 +11,8 @@ import type {
   ProviderDraft,
   ProviderTestResult,
   Status,
+  LicenseValidationResult,
+  MachineInfo,
 } from './types';
 
 function resolveBase(): string {
@@ -113,6 +115,15 @@ export const api = {
 
   // status
   status: () => request<Status>('/api/status'),
+
+  // licensing
+  license: {
+    validate: (email: string) =>
+      request<LicenseValidationResult>('/api/license/validate', { method: 'POST', body: JSON.stringify({ email }) }),
+    status: (email: string) =>
+      request<LicenseValidationResult>(`/api/license/status?email=${encodeURIComponent(email)}`),
+    machine: () => request<MachineInfo>('/api/license/machine'),
+  },
 };
 
 /**

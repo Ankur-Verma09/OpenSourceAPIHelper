@@ -28,9 +28,12 @@ export function Chat() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
 
+  // Auto-select first chat on mount
   useEffect(() => {
-    if (!chatId && chats.length > 0) setChatId(chats[0].id);
-  }, [chatId, chats]);
+    if (!chatId && chats.length > 0) {
+      setChatId(chats[0].id);
+    }
+  }, []); // Run once on mount
 
   // open chat on click from the sidebar
   useEffect(() => {
@@ -110,7 +113,6 @@ export function Chat() {
         : c,
     );
     setInput('');
-    setLive({ role: 'assistant', content: '', reasoning: '', streaming: true, model: selectedModel });
 
     const ac = new AbortController();
     abortRef.current = ac;
@@ -189,7 +191,7 @@ export function Chat() {
       <div className="pane-head">
         <strong>{chat?.title ?? 'Chat'}</strong>
         <div className="spacer" />
-        {error && <span className="small" style={{ color: 'var(--danger)' }}>{error}</span>}
+        {error && <div className="error-banner" style={{ maxWidth: 400 }}>{error}</div>}
         <div className="spacer" />
         <span className="badge purple">model: {selectedModel || '—'}</span>
       </div>

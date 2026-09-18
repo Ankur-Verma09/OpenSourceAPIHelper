@@ -11,6 +11,7 @@ export interface Provider {
   key_masked: string; // e.g. "sk-••••••abcd" or ""
   has_key: boolean;
   key_env: string;
+  tls_fingerprint: string;
   type: ProviderTransport;
   active: boolean;
   created_at: number;
@@ -74,6 +75,7 @@ export interface ProviderDraft {
   baseUrl?: string;
   apiKey?: string;
   keyEnv?: string;
+  tlsFingerprint?: string;
 }
 
 export interface MemoryHit {

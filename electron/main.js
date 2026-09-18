@@ -13,6 +13,14 @@ const path = require('path');
 const { spawn } = require('child_process');
 const net = require('net');
 
+// Disable GPU acceleration on Windows to prevent crashes — must be before app.whenReady()
+if (process.platform === 'win32') {
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch('disable-gpu');
+  app.commandLine.appendSwitch('disable-gpu-compositing');
+  app.commandLine.appendSwitch('disable-software-rasterizer');
+}
+
 const HOST = process.env.OSAH_HOST || '127.0.0.1';
 const PORT = Number(process.env.OSAH_PORT || 8787);
 const DEV = process.env.OSAH_DEV === '1';
@@ -79,8 +87,18 @@ function createWindow() {
       allowRunningInsecureContent: false,
       experimentalFeatures: false,
       preload: path.join(__dirname, 'preload.js'),
+      // Disable GPU acceleration in renderer
+      offscreen: false,
+      enableRemoteModule: false,
     },
   });
+
+  // Additional GPU crash prevention for renderer
+  if (process.platform === 'win32') {
+    win.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
+      callback({ requestHeaders: details.requestHeaders });
+    });
+  }
 
   // Content Security Policy — restrict to local service + self
   win.webContents.session.webRequest.onHeadersReceived((details, callback) => {

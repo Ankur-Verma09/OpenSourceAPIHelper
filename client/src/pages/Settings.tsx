@@ -8,9 +8,14 @@ export function Settings() {
   const providers = useStore((s) => s.providers);
   const refresh = useStore((s) => s.refresh);
   const [editing, setEditing] = useState<Partial<Provider & { editingId?: string; apiKey?: string; baseUrl?: string; keyEnv?: string }>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const clearMessages = () => { setError(null); setSuccess(null); };
 
   const save = async (): Promise<Provider | null> => {
     try {
+      clearMessages();
       let saved: Provider | undefined;
       if (editing.editingId) {
         saved = await api.updateProvider(editing.editingId, {
@@ -19,6 +24,7 @@ export function Settings() {
           apiKey: editing.apiKey,
           keyEnv: editing.keyEnv,
         });
+        setSuccess('Provider updated');
       } else {
         saved = await api.createProvider({
           name: editing.name || 'New Provider',
@@ -26,12 +32,13 @@ export function Settings() {
           apiKey: editing.apiKey,
           keyEnv: editing.keyEnv,
         });
+        setSuccess('Provider added');
       }
       setEditing({});
       await refresh();
       return saved ?? null;
     } catch (e) {
-      alert((e as Error).message);
+      setError((e as Error).message);
       return null;
     }
   };
@@ -39,29 +46,37 @@ export function Settings() {
   const saveAndTest = async () => {
     const saved = await save();
     if (!saved) return;
-    const r = await api
-      .testProvider(saved.id)
-      .catch((e: Error) => ({ ok: false, error: e.message, models: [] as string[] }));
-    alert(
-      r.ok
-        ? `Connected — ${r.models?.length ?? 0} models discovered`
-        : `Test failed: ${r.error}`,
-    );
+    try {
+      const r = await api.testProvider(saved.id);
+      if (r.ok) {
+        setSuccess(`Connected — ${r.models?.length ?? 0} models discovered`);
+      } else {
+        setError(`Test failed: ${r.error}`);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    }
     await refresh();
   };
 
   const del = async (id: string) => {
     if (!confirm('Delete this provider and its key?')) return;
-    await api.deleteProvider(id);
-    await refresh();
+    try {
+      clearMessages();
+      await api.deleteProvider(id);
+      setSuccess('Provider deleted');
+      await refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    }
   };
 
   return (
     <div className="panel">
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        <h2 style={{ margin: 0 }}>Providers &amp; Keys</h2>
+        <h2 style={{ margin: 0 }}>Providers & Keys</h2>
         <div className="spacer" />
-        <button className="primary" onClick={() => setEditing({ name: '', baseUrl: 'https://api.openai.com/v1' })}>
+        <button className="primary" onClick={() => { clearMessages(); setEditing({ name: '', baseUrl: 'https://api.openai.com/v1' }); }}>
           + Add provider
         </button>
       </div>
@@ -71,13 +86,19 @@ export function Settings() {
         UI as plaintext</b>. You only ever see a masked form like <code>sk-••••••abcd</code>.
       </div>
 
+      {(error || success) && (
+        <div className={error ? 'error-banner' : 'notice'} style={{ marginBottom: 16 }}>
+          {error ? '✗' : '✓'} {error || success}
+        </div>
+      )}
+
       {(editing.name !== undefined || providers.length === 0 || (providers.length > 0 && Object.keys(editing).length === 0) || providers.length > 0) && (
         <div className="card">
           <div className="row" style={{ marginBottom: 14 }}>
             <h3 style={{ margin: 0 }}>{editing.editingId ? 'Edit provider' : 'Add provider'}</h3>
             <div className="spacer" />
             {editing.editingId && (
-              <button onClick={() => setEditing({})}>Cancel</button>
+              <button onClick={() => { clearMessages(); setEditing({}); }}>Cancel</button>
             )}
           </div>
           <div className="field-row">
@@ -139,7 +160,7 @@ export function Settings() {
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Configured providers</h3>
           {providers.map((p) => (
-            <ProviderRow key={p.id} p={p} onEdit={(data) => setEditing({ ...data, editingId: p.id })} onDelete={() => del(p.id)} />
+            <ProviderRow key={p.id} p={p} onEdit={(data) => { clearMessages(); setEditing({ ...data, editingId: p.id }); }} onDelete={() => del(p.id)} />
           ))}
         </div>
       )}
@@ -168,7 +189,7 @@ function ProviderRow({
       setResult(
         r.ok
           ? { ok: true, msg: `Connected — ${r.models?.length ?? 0} models discovered` }
-          : { ok: false, msg: r.error || 'test failed' },
+          : { ok: false, msg: r.error || 'Test failed' },
       );
       await refresh();
     } catch (e) {

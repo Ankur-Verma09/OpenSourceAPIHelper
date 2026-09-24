@@ -95,3 +95,58 @@ export type StreamEvent =
   | { event: 'finish' }
   | { event: 'done'; message_id: string | null; full: string }
   | { event: 'error'; error: string };
+
+export interface FileItem {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  size: number;
+  mtime: number;
+}
+
+export interface DirectoryListResult {
+  currentPath: string;
+  parentPath: string;
+  items: FileItem[];
+}
+
+export interface FileContentResult {
+  path: string;
+  name: string;
+  content: string;
+  encoding: string;
+  size: number;
+  mtime: number;
+  lines?: number;
+}
+
+export interface FileWritePayload {
+  path: string;
+  content: string;
+  encoding?: string;
+  overwrite?: boolean;
+}
+
+export interface FileWriteResult {
+  ok: boolean;
+  path: string;
+  name: string;
+  size: number;
+  mtime: number;
+}
+
+export interface ExecCommandPayload {
+  command: string;
+  cwd?: string;
+  timeout?: number;
+}
+
+export interface ExecCommandResult {
+  ok: boolean;
+  exitCode: number | null;
+  stdout: string;
+  stderr: string;
+  durationMs: number;
+  cwd: string;
+  command: string;
+}

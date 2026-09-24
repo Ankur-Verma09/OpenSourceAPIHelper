@@ -5,7 +5,14 @@
 import type {
   ChatDetail,
   ChatSummary,
+  DirectoryListResult,
   DiscoveredModel,
+  ExecCommandPayload,
+  ExecCommandResult,
+  FileContentResult,
+  FileItem,
+  FileWritePayload,
+  FileWriteResult,
   MemoryHit,
   Provider,
   ProviderDraft,
@@ -110,6 +117,30 @@ export const api = {
   // memory
   searchMemory: (q: string, limit = 10) =>
     request<MemoryHit[]>(`/api/memory/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+
+  // files (Local FS)
+  listFiles: (dirPath?: string) =>
+    request<DirectoryListResult>(`/api/files/list${dirPath ? `?path=${encodeURIComponent(dirPath)}` : ''}`),
+  readFile: (filePath: string, encoding = 'utf8') =>
+    request<FileContentResult>(`/api/files/read?path=${encodeURIComponent(filePath)}&encoding=${encoding}`),
+  writeFile: (payload: FileWritePayload) =>
+    request<FileWriteResult>('/api/files/write', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  deleteFile: (filePath: string) =>
+    request<{ ok: boolean; path: string }>(`/api/files?path=${encodeURIComponent(filePath)}`, {
+      method: 'DELETE',
+    }),
+  getFileInfo: (filePath: string) =>
+    request<FileItem>(`/api/files/info?path=${encodeURIComponent(filePath)}`),
+
+  // exec (Command Execution)
+  execCommand: (payload: ExecCommandPayload) =>
+    request<ExecCommandResult>('/api/exec', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
   // status
   status: () => request<Status>('/api/status'),

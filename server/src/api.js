@@ -4,6 +4,8 @@ const express = require('express');
 const crypto = require('crypto');
 const prov = require('./providers');
 const chat = require('./chatstore');
+const files = require('./files');
+const execMod = require('./exec');
 const openai = require('./openai');
 const { createVerifyingFetch } = require('./openai');
 const db = require('./db');
@@ -310,6 +312,37 @@ router.get('/memory/search', asyncHandler(async (req, res) => {
   const q = req.query.q || '';
   const limit = Math.min(parseInt(req.query.limit) || 10, 50);
   res.json(chat.searchMemory(q, { limit }));
+}));
+
+// ---------------- files (Local FS) ----------------
+router.get('/files/list', asyncHandler(async (req, res) => {
+  res.json(files.listDirectory(req.query.path));
+}));
+
+router.get('/files/read', asyncHandler(async (req, res) => {
+  const { path: filePath, encoding } = req.query;
+  res.json(files.readFileContent(filePath, encoding));
+}));
+
+router.post('/files/write', asyncHandler(async (req, res) => {
+  const { path: filePath, content, encoding, overwrite } = req.body || {};
+  res.json(files.writeFileContent(filePath, content, encoding, overwrite !== false));
+}));
+
+router.delete('/files', asyncHandler(async (req, res) => {
+  const filePath = req.query.path || req.body?.path;
+  res.json(files.deleteFile(filePath));
+}));
+
+router.get('/files/info', asyncHandler(async (req, res) => {
+  res.json(files.getFileMetadata(req.query.path));
+}));
+
+// ---------------- exec (Command Execution) ----------------
+router.post('/exec', asyncHandler(async (req, res) => {
+  const { command, cwd, timeout } = req.body || {};
+  const result = await execMod.runCommand({ command, cwd, timeout });
+  res.json(result);
 }));
 
 // ---------------- status ----------------

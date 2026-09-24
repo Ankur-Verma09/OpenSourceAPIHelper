@@ -23,7 +23,7 @@ function getCentralDataDir() {
   }
   const platform = os.platform();
   if (platform === 'win32') {
-    return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'AnkurApps');
+    return 'D:\\db';
   }
   if (platform === 'darwin') {
     return path.join(os.homedir(), 'Library', 'Application Support', 'AnkurApps');

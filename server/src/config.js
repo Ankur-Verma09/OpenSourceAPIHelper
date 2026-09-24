@@ -31,7 +31,7 @@ module.exports = {
   SERVICE_PORT: Number(process.env.OSAH_PORT || 8787),
   HOST: process.env.OSAH_HOST || '127.0.0.1',
   DATA_DIR: defaultDataDir(),
-  DB_PATH: resolve(process.env.OSAH_DB || 'osah.sqlite'),
+  DB_PATH: process.env.OSAH_DB ? resolve(process.env.OSAH_DB) : (os.platform() === 'win32' ? path.join('D:\\db', 'osah.sqlite') : resolve('osah.sqlite')),
   MASTER_KEY_FILE: resolve(process.env.OSAH_KEY_FILE || '.masterkey'),
   AUDIT_LOG: resolve(process.env.OSAH_AUDIT || 'logs/audit.log'),
   MAX_BODY: '2mb',

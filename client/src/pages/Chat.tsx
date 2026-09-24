@@ -35,6 +35,11 @@ export function Chat() {
     }
   }, []); // Run once on mount
 
+  // attach file modal state
+  const [showAttachModal, setShowAttachModal] = useState(false);
+  const [attachPath, setAttachPath] = useState('');
+  const [attachLoading, setAttachLoading] = useState(false);
+
   // open chat on click from the sidebar
   useEffect(() => {
     const handler = (ev: Event) => {
@@ -43,6 +48,18 @@ export function Chat() {
     };
     window.addEventListener('osah:open-chat', handler);
     return () => window.removeEventListener('osah:open-chat', handler);
+  }, []);
+
+  // listen to send-to-chat event from Files tab
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const text = (ev as CustomEvent<string>).detail;
+      if (text) {
+        setInput((prev) => (prev ? `${prev}\n\n${text}` : text));
+      }
+    };
+    window.addEventListener('osah:send-to-chat', handler);
+    return () => window.removeEventListener('osah:send-to-chat', handler);
   }, []);
 
   // load messages when the active chat changes
@@ -230,6 +247,14 @@ export function Chat() {
 
       {chatId && (
         <div className="composer">
+          <button
+            className="btn ghost"
+            style={{ fontSize: 13, padding: '6px 10px' }}
+            title="Attach local file context"
+            onClick={() => setShowAttachModal(true)}
+          >
+            📁 Attach
+          </button>
           <select
             className="model"
             value={selectedModel}
@@ -259,6 +284,90 @@ export function Chat() {
               Send
             </button>
           )}
+        </div>
+      )}
+
+      {showAttachModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+          }}
+        >
+          <div
+            className="glass"
+            style={{
+              width: 480,
+              maxWidth: '90vw',
+              padding: 20,
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--glass-border-strong)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+            }}
+          >
+            <h3 style={{ margin: 0 }}>Attach Local File</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 12, color: 'var(--text-3)' }}>Local File Path:</label>
+              <input
+                type="text"
+                className="input"
+                style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}
+                value={attachPath}
+                onChange={(e) => setAttachPath(e.target.value)}
+                placeholder="e.g. C:\path\to\code.py or ./README.md"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (!attachPath.trim()) return;
+                    setAttachLoading(true);
+                    api
+                      .readFile(attachPath.trim())
+                      .then((res) => {
+                        const snippet = `[Local File: ${res.name}]\n\`\`\`\n${res.content}\n\`\`\`\n`;
+                        setInput((prev) => (prev ? `${prev}\n\n${snippet}` : snippet));
+                        setShowAttachModal(false);
+                        setAttachPath('');
+                      })
+                      .catch((err) => setError((err as Error).message))
+                      .finally(() => setAttachLoading(false));
+                  }
+                }}
+              />
+            </div>
+            <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
+              <button className="btn outline" onClick={() => setShowAttachModal(false)}>
+                Cancel
+              </button>
+              <button
+                className="btn primary"
+                disabled={attachLoading || !attachPath.trim()}
+                onClick={async () => {
+                  setAttachLoading(true);
+                  try {
+                    const res = await api.readFile(attachPath.trim());
+                    const snippet = `[Local File: ${res.name}]\n\`\`\`\n${res.content}\n\`\`\`\n`;
+                    setInput((prev) => (prev ? `${prev}\n\n${snippet}` : snippet));
+                    setShowAttachModal(false);
+                    setAttachPath('');
+                  } catch (err) {
+                    setError((err as Error).message);
+                  } finally {
+                    setAttachLoading(false);
+                  }
+                }}
+              >
+                {attachLoading ? <span className="spinner" /> : 'Read & Attach'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -144,14 +144,17 @@ async function testConnection(baseUrl, apiKey, model, { timeout = 20000, fetch: 
 
 // Stream a chat-completion SSE response. Caller governs timeout/cancellation
 // (streaming responses can legitimately run for minutes). Returns `res`.
-async function streamChat(baseUrl, apiKey, { model, messages, max_tokens, fetch: fetchFn = fetch } = {}) {
+async function streamChat(baseUrl, apiKey, { model, messages, max_tokens, tools, tool_choice, fetch: fetchFn = fetch } = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 min max stream duration
   try {
+    const payload = { model, messages, max_tokens, stream: true };
+    if (tools && Array.isArray(tools) && tools.length > 0) payload.tools = tools;
+    if (tool_choice) payload.tool_choice = tool_choice;
     const res = await fetchFn(`${normalizeBase(baseUrl)}/chat/completions`, {
       method: 'POST',
       headers: headers({ key: apiKey }),
-      body: JSON.stringify({ model, messages, max_tokens, stream: true }),
+      body: JSON.stringify(payload),
       signal: controller.signal,
     });
     clearTimeout(timeout);

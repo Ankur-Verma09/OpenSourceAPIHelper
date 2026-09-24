@@ -5,11 +5,15 @@ import { Dashboard } from './pages/Dashboard';
 import { Chat } from './pages/Chat';
 import { Settings } from './pages/Settings';
 import { History } from './pages/History';
+import { Files } from './pages/Files';
+import { Terminal } from './pages/Terminal';
 
-type Tab = 'chat' | 'settings' | 'history' | 'dashboard';
+type Tab = 'chat' | 'files' | 'terminal' | 'settings' | 'history' | 'dashboard';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'chat', label: 'Chat' },
+  { id: 'files', label: 'Files' },
+  { id: 'terminal', label: 'Terminal' },
   { id: 'settings', label: 'Settings' },
   { id: 'history', label: 'Memory' },
   { id: 'dashboard', label: 'Dashboard' },
@@ -26,6 +30,12 @@ export default function App() {
     const t = setInterval(() => refresh(), 8000);
     return () => clearInterval(t);
   }, [refresh]);
+
+  useEffect(() => {
+    const handler = () => setTab('chat');
+    window.addEventListener('osah:send-to-chat', handler);
+    return () => window.removeEventListener('osah:send-to-chat', handler);
+  }, []);
 
   return (
     <div className="app">
@@ -58,6 +68,8 @@ export default function App() {
         </div>
         <section className="pane glass">
           {tab === 'chat' && <Chat />}
+          {tab === 'files' && <Files />}
+          {tab === 'terminal' && <Terminal />}
           {tab === 'settings' && <Settings />}
           {tab === 'history' && <History />}
           {tab === 'dashboard' && <Dashboard />}

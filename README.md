@@ -120,7 +120,7 @@ Logs go to `$OSAH_DATA_DIR/osah.log`.
 | `OSAH_DATA_DIR` | `%APPDATA%\OpenSourceAPIHelper` (Win) or `~/Library/Application Support/OpenSourceAPIHelper` (mac) | Runtime state: SQLite, `.masterkey`, logs |
 | `OSAH_PORT` | `8787` | Loopback port |
 | `OSAH_HOST` | `127.0.0.1` | Bind address (keep loopback only) |
-| `OSAH_DB` | `osah.sqlite` | SQLite filename |
+| `OSAH_DB` | `D:\db\osah.sqlite` on Windows; `osah.sqlite` elsewhere | SQLite path or filename |
 | `OSAH_TOKEN` | unset | Optional `X-OSAH-Token` bearer check (defense-in-depth) |
 
 ## Capabilities (mapped to requirements)
@@ -133,6 +133,7 @@ Logs go to `$OSAH_DATA_DIR/osah.log`.
 - **Redaction + sealed config** – keys never visible; config file encrypted/sealed; no file-edit or file-view surface. **(Req 8, 9)**
 - **Always-on service** – installed as Windows Service / macOS LaunchAgent that keeps app + API + proxy running in background. **(Req 10)**
 - **Cross-platform** – Windows (primary) and macOS. **(Req 11)**
+- **Local File Read & Write** – browse local file system, view and edit text files in-app, write changes directly to disk, and attach local file contents to chat prompts. **(Local FS)**
 - **Consume anywhere** – OpenAI-compatible `/v1` proxy exposes the active key to any client (QA test suites get stable, key‑free loopback URL). **(Implied)**
 
 ## Documentation (v2)

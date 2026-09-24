@@ -39,7 +39,7 @@ npm start          # daemon on http://127.0.0.1:8787, serves the built UI
 | `OSAH_DATA_DIR` | `%APPDATA%\OpenSourceAPIHelper` (Win) or `~/Library/Application Support/OpenSourceAPIHelper` (mac) | runtime state: sqlite, `.masterkey`, logs |
 | `OSAH_PORT` | `8787` | loopback port |
 | `OSAH_HOST` | `127.0.0.1` | bind address (**keep loopback**) |
-| `OSAH_DB` | `osah.sqlite` | sqlite filename |
+| `OSAH_DB` | `D:\db\osah.sqlite` on Windows; `osah.sqlite` elsewhere | sqlite path or filename |
 | `OSAH_TOKEN` | unset | optional `X-OSAH-Token` bearer check (defense-in-depth) |
 
 ## 5. Install as an OS service (Req 10)
